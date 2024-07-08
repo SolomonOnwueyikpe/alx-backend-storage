@@ -1,28 +1,24 @@
 #!/usr/bin/env python3
-""" MongoDB Operations with Python using pymongo """
+'''pymongo module
+'''
 from pymongo import MongoClient
 
-if __name__ == "__main__":
-    """ Provides some stats about Nginx logs stored in MongoDB """
-    client = MongoClient('mongodb://127.0.0.1:27017')
-    nginx_collection = client.logs.nginx
 
-    n_logs = nginx_collection.count_documents({})
-    print(f'{n_logs} logs')
-
-    methods = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+def nginx_logs(nginx_collections):
+    '''Print Nginx HTTP methods logs
+    '''
+    print('{} logs'.format(nginx_collections.count_documents({})))
     print('Methods:')
-    for method in methods:
-        count = nginx_collection.count_documents({"method": method})
-        print(f'\tmethod {method}: {count}')
-
-    status_check = nginx_collection.count_documents(
-        {"method": "GET", "path": "/status"}
-    )
-
-    print(f'{status_check} status check')
-
-    top_ips = nginx_collection.aggregate([
+    http_methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+    for method in http_methods:
+        total_count = len(list(nginx_collections.find({'method': method})))
+        print('\tmethod {}: {}'.format(method, total_count))
+    status_count = len(list(nginx_collections.find(
+        {'method': 'GET', 'path': '/status'}
+    )))
+    print('{} status check'.format(status_count))
+    print('IPs:')
+    ips = nginx_collections.aggregate([
         {"$group":
             {
                 "_id": "$ip",
@@ -37,9 +33,18 @@ if __name__ == "__main__":
             "count": 1
         }}
     ])
+    for ip in ips:
+        top_ip = ip.get("ip")
+        count = ip.get("count")
+        print('\t{}: {}'.format(top_ip, count))
 
-    print("IPs:")
-    for top_ip in top_ips:
-        ip = top_ip.get("ip")
-        count = top_ip.get("count")
-        print(f'\t{ip}: {count}')
+
+def start_db():
+    '''connects to db client and run above function
+    '''
+    client = MongoClient('mongodb://127.0.0.1:27017')
+    nginx_logs(client.logs.nginx)
+
+
+if __name__ == '__main__':
+    start_db()
